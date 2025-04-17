@@ -55,8 +55,8 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := api.Stop(ctx); err != nil {
-		logger.Error("Failed to stop server", zap.Error(err))
-	} else {
-		logger.Info("HTTP server stopped successfully")
+		logger.Fatal("Failed to stop server", zap.Error(err))
 	}
+
+	logger.Info("HTTP server stopped successfully")
 }

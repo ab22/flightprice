@@ -23,9 +23,10 @@ type server struct {
 
 func New(logger *zap.Logger, port int) Server {
 	var (
-		addr   = fmt.Sprintf("0.0.0.0:%d", port)
-		router = BuildMuxRouter(logger)
-		srv    = &http.Server{
+		apiServer = &server{}
+		addr      = fmt.Sprintf("0.0.0.0:%d", port)
+		router    = RegisterRoutes(apiServer, logger)
+		srv       = &http.Server{
 			Handler:      router,
 			Addr:         addr,
 			WriteTimeout: 10 * time.Second,
@@ -33,11 +34,10 @@ func New(logger *zap.Logger, port int) Server {
 		}
 	)
 
-	return &server{
-		router,
-		srv,
-		logger,
-	}
+	apiServer.router = router
+	apiServer.srv = srv
+	apiServer.logger = logger
+	return apiServer
 }
 
 func (s *server) Serve() error {

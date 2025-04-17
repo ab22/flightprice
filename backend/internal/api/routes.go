@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 
-	"github.com/ab22/flightprice/internal/api/handler"
 	"github.com/ab22/flightprice/internal/api/middleware"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
@@ -12,32 +11,26 @@ import (
 type Route struct {
 	Path        string
 	HandlerFunc http.HandlerFunc
-	Middlewares []http.HandlerFunc
+	Middlewares []mux.MiddlewareFunc
 }
 
-var Routes = []Route{
-	{
-		Path:        "/ping",
-		HandlerFunc: handler.Ping,
-		Middlewares: nil,
-	},
-	{
-		Path:        "/flights/search",
-		HandlerFunc: nil,
-		Middlewares: []http.HandlerFunc{},
-	},
-}
-
-func BuildMuxRouter(logger *zap.Logger) *mux.Router {
+func RegisterRoutes(s *server, logger *zap.Logger) *mux.Router {
 	var (
 		router           = mux.NewRouter()
-		loggerMiddleware = middleware.NewLoggerMiddleware(logger)
+		authMiddleware   = middleware.NewAuthMiddleware(logger)
+		loggerMiddleware = middleware.NewRequestLoggerMiddleware(logger)
 	)
 
-	for _, r := range Routes {
-		router.HandleFunc(r.Path, r.HandlerFunc)
-		router.Use(loggerMiddleware)
-	}
+	// Global middlewares
+	router.Use(loggerMiddleware)
+
+	// Health endpoint
+	router.HandleFunc("/ping", s.Ping)
+
+	// Flight endpoints
+	flightsAPI := router.PathPrefix("/flights").Subrouter()
+	flightsAPI.HandleFunc("/search", s.FlightsSearch)
+	flightsAPI.Use(authMiddleware)
 
 	return router
 }

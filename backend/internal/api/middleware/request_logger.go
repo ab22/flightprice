@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewLoggerMiddleware(logger *zap.Logger) mux.MiddlewareFunc {
+func NewRequestLoggerMiddleware(logger *zap.Logger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r)
