@@ -1,0 +1,7 @@
+services:
+  flightprice-api:
+    build:
+      context: ../../
+      dockerfile: ./build/local/Dockerfile
+    ports:
+      - 8080:8080

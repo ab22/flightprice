@@ -1,0 +1,22 @@
+FROM golang:alpine AS builder
+
+WORKDIR /build
+COPY . .
+
+RUN --mount=type=cache,target=/go/pkg/mod/ \
+    --mount=type=bind,source=go.sum,target=go.sum \
+    --mount=type=bind,source=go.mod,target=go.mod \
+    go mod download -x
+
+ENV GOCACHE=/root/.cache/go-build
+RUN --mount=type=cache,target=/go/pkg/mod/ \
+    --mount=type=cache,target="/root/.cache/go-build" \
+    --mount=type=bind,target=. \
+    mkdir -p /out && \
+    go build -o /out/server ./cmd/flightprice/main.go
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /out/server /app/
+
+CMD [ "/app/server" ]
