@@ -4,7 +4,9 @@ import (
 	"net/http"
 
 	"github.com/ab22/flightprice/internal/api/handler"
+	"github.com/ab22/flightprice/internal/api/middleware"
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 type Route struct {
@@ -26,11 +28,15 @@ var Routes = []Route{
 	},
 }
 
-func BuildMuxRouter() *mux.Router {
-	router := mux.NewRouter()
+func BuildMuxRouter(logger *zap.Logger) *mux.Router {
+	var (
+		router           = mux.NewRouter()
+		loggerMiddleware = middleware.NewLoggerMiddleware(logger)
+	)
 
 	for _, r := range Routes {
 		router.HandleFunc(r.Path, r.HandlerFunc)
+		router.Use(loggerMiddleware)
 	}
 
 	return router

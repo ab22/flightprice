@@ -1,28 +1,33 @@
 package api
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 type Server interface {
 	Serve() error
-	Stop()
+	Stop(ctx context.Context) error
 }
 
 type server struct {
 	router *mux.Router
 	srv    *http.Server
+	logger *zap.Logger
 }
 
-func New() Server {
+func New(logger *zap.Logger, port int) Server {
 	var (
-		router = BuildMuxRouter()
+		addr   = fmt.Sprintf("0.0.0.0:%d", port)
+		router = BuildMuxRouter(logger)
 		srv    = &http.Server{
 			Handler:      router,
-			Addr:         "0.0.0.0:8080",
+			Addr:         addr,
 			WriteTimeout: 10 * time.Second,
 			ReadTimeout:  10 * time.Second,
 		}
@@ -31,6 +36,7 @@ func New() Server {
 	return &server{
 		router,
 		srv,
+		logger,
 	}
 }
 
@@ -38,5 +44,6 @@ func (s *server) Serve() error {
 	return s.srv.ListenAndServe()
 }
 
-func (s *server) Stop() {
+func (s *server) Stop(ctx context.Context) error {
+	return s.srv.Shutdown(ctx)
 }
