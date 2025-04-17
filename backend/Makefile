@@ -18,7 +18,12 @@ build:
 flogs:
 	docker compose -f ./build/local/docker-compose.yml logs -f
 
+.PHONY: test
+test:
+	go test ./...
+
 .PHONY: lint
+lint:
 	golangci-lint run ./...
 
 .PHONY: ping

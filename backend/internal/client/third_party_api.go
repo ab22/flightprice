@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	InvalidStatusCodeErr = errors.New("an invalid status code was recieved")
+	ErrInvalidStatusCode = errors.New("an invalid status code was recieved")
 )
 
 type ThirdPartyAPI interface {
@@ -42,9 +42,9 @@ func (a *thirdPartyAPI) FetchFlights() ([]models.Flight, error) {
 	data, err := io.ReadAll(res.Body)
 
 	if err != nil {
-		return nil, fmt.Errorf("ThirdPartyAPI.FetchFlights: io.ReadAll failed:", err)
+		return nil, fmt.Errorf("ThirdPartyAPI.FetchFlights: io.ReadAll failed: %w", err)
 	} else if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: status code [%d] - data received [%s]", InvalidStatusCodeErr, res.StatusCode, string(data))
+		return nil, fmt.Errorf("%w: status code [%d] - data received [%s]", ErrInvalidStatusCode, res.StatusCode, string(data))
 	}
 
 	err = json.Unmarshal(data, &flights)
