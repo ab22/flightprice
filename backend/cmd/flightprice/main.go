@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/ab22/flightprice/internal/api"
+	"github.com/ab22/flightprice/internal/client"
 	"github.com/ab22/flightprice/internal/config"
+	"github.com/ab22/flightprice/internal/service"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -33,14 +37,26 @@ func main() {
 	defer logger.Sync()
 	logger.Info("Starting API on port 8080")
 	var (
-		cfg = config.New()
-		api = api.New(logger, &cfg)
+		cfg                 = config.New()
+		httpClient          = &http.Client{}
+		amadeusClient       = client.NewThirdPartyAPI(httpClient, "http://amadeus:8080/search")
+		googleflightsClient = client.NewThirdPartyAPI(httpClient, "http://googleflights:8080/search")
+		skyscannerClient    = client.NewThirdPartyAPI(httpClient, "http://skyscanner:8080/search")
+		flightsService      = service.NewFlightsService(
+			amadeusClient,
+			googleflightsClient,
+			skyscannerClient,
+			logger,
+			&cfg)
+		api = api.New(logger, &cfg, flightsService)
 	)
 
 	// Serve on a separate goroutine.
 	go func() {
 		if err := api.Serve(); err != nil {
-			log.Fatalln("serve error:", err)
+			if !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalln("serve error:", err)
+			}
 		}
 	}()
 
