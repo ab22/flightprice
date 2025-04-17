@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ab22/flightprice/internal/api"
+	"github.com/ab22/flightprice/internal/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -29,9 +30,12 @@ func main() {
 		log.Fatalln("Failed to create logger:", err)
 	}
 
+	defer logger.Sync()
 	logger.Info("Starting API on port 8080")
-	port := 8080
-	api := api.New(logger, port)
+	var (
+		cfg = config.New()
+		api = api.New(logger, &cfg)
+	)
 
 	// Serve on a separate goroutine.
 	go func() {

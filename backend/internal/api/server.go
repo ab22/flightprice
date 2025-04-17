@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ab22/flightprice/internal/config"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
@@ -16,16 +17,17 @@ type Server interface {
 }
 
 type server struct {
+	cfg    *config.Config
 	router *mux.Router
 	srv    *http.Server
 	logger *zap.Logger
 }
 
-func New(logger *zap.Logger, port int) Server {
+func New(logger *zap.Logger, cfg *config.Config) Server {
 	var (
 		apiServer = &server{}
-		addr      = fmt.Sprintf("0.0.0.0:%d", port)
-		router    = RegisterRoutes(apiServer, logger)
+		addr      = fmt.Sprintf("0.0.0.0:%s", cfg.APIPort)
+		router    = RegisterRoutes(apiServer, logger, cfg)
 		srv       = &http.Server{
 			Handler:      router,
 			Addr:         addr,
@@ -37,6 +39,7 @@ func New(logger *zap.Logger, port int) Server {
 	apiServer.router = router
 	apiServer.srv = srv
 	apiServer.logger = logger
+	apiServer.cfg = cfg
 	return apiServer
 }
 
