@@ -24,5 +24,7 @@ func (s *server) FlightsSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	if _, err = w.Write(data); err != nil {
+		s.logger.Error("failed to write response", zap.Error(err))
+	}
 }

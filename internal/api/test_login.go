@@ -24,5 +24,7 @@ func (s *server) TestLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(200)
-	w.Write([]byte(tokenString))
+	if _, err := w.Write([]byte(tokenString)); err != nil {
+		s.logger.Error("failed to write response", zap.Error(err))
+	}
 }

@@ -7,10 +7,9 @@ type Config struct {
 	APIPort      string `env:"API_PORT"`
 }
 
-func New() Config {
+func New() (Config, error) {
 	c := Config{}
+	err := env.Parse(&c)
 
-	env.Parse(&c)
-
-	return c
+	return c, err
 }

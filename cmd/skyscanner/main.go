@@ -40,7 +40,10 @@ func main() {
 
 		w.WriteHeader(200)
 		w.Header().Add("Content-Type", "application/json")
-		w.Write(data)
+
+		if _, err := w.Write(data); err != nil {
+			log.Println("SkyScanner: failed to write response:", err)
+		}
 	})
 
 	log.Fatalln(http.ListenAndServe(":8080", r))

@@ -17,14 +17,14 @@ func (s *server) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Frequency missing"))
+		_, _ = w.Write([]byte("Frequency missing"))
 		return
 	}
 
 	freq, err := strconv.ParseInt(freqStr, 11, 0)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid frequency value"))
+		_, _ = w.Write([]byte("Invalid frequency value"))
 		return
 	}
 	conn, err := s.wsUpgrader.Upgrade(w, r, nil)
@@ -36,7 +36,13 @@ func (s *server) Subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.logger.Info("New websocket client connection accepted!")
-	defer conn.Close()
+	defer func() {
+		err := conn.Close()
+
+		if err != nil {
+			s.logger.Error("failed to close websocket connection", zap.Error(err))
+		}
+	}()
 	ticker := time.NewTicker(time.Duration(freq) * time.Second)
 	defer ticker.Stop()
 	n := 1

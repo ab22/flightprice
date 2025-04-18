@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/ab22/flightprice/internal/client/models"
+	"go.uber.org/zap"
 )
 
 var (
@@ -22,12 +23,14 @@ type ThirdPartyAPI interface {
 type thirdPartyAPI struct {
 	httpClient *http.Client
 	address    string
+	logger     *zap.Logger
 }
 
-func NewThirdPartyAPI(httpClient *http.Client, address string) ThirdPartyAPI {
+func NewThirdPartyAPI(httpClient *http.Client, address string, logger *zap.Logger) ThirdPartyAPI {
 	return &thirdPartyAPI{
 		httpClient,
 		address,
+		logger,
 	}
 }
 
@@ -41,7 +44,13 @@ func (a *thirdPartyAPI) FetchFlights(ctx context.Context) ([]models.Flight, erro
 	if err != nil {
 		return nil, fmt.Errorf("ThirdPartyAPI.FetchFlights: http request failed: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		err := res.Body.Close()
+
+		if err != nil {
+			a.logger.Error("FetchFlights failed to close body", zap.Error(err))
+		}
+	}()
 
 	var flights []models.Flight
 	data, err := io.ReadAll(res.Body)

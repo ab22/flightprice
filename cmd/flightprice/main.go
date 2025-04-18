@@ -36,14 +36,26 @@ func main() {
 		log.Fatalln("Failed to create logger:", err)
 	}
 
-	defer logger.Sync()
+	defer func() {
+		err := logger.Sync()
+
+		// This will probably not be flushed.
+		if err != nil {
+			log.Println("Failed to sync logger:", err)
+		}
+	}()
 	logger.Info("Starting API on port 8080")
+	cfg, err := config.New()
+
+	if err != nil {
+		logger.Fatal("Failed to parse configuration", zap.Error(err))
+	}
+
 	var (
-		cfg                 = config.New()
 		httpClient          = &http.Client{}
-		amadeusClient       = client.NewThirdPartyAPI(httpClient, "http://amadeus:8080/search")
-		googleflightsClient = client.NewThirdPartyAPI(httpClient, "http://googleflights:8080/search")
-		skyscannerClient    = client.NewThirdPartyAPI(httpClient, "http://skyscanner:8080/search")
+		amadeusClient       = client.NewThirdPartyAPI(httpClient, "http://amadeus:8080/search", logger)
+		googleflightsClient = client.NewThirdPartyAPI(httpClient, "http://googleflights:8080/search", logger)
+		skyscannerClient    = client.NewThirdPartyAPI(httpClient, "http://skyscanner:8080/search", logger)
 		redisClient         = redis.NewClient(&redis.Options{
 			Addr:     "redis:6379",
 			Password: "", // No password set
