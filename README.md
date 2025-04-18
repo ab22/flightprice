@@ -6,9 +6,6 @@ Go microservice that retrieves flight prices from local mocked APIs.
 ## Quickstart
 
 ```sh
-# Switch to our Go app directory.
-cd backend/
-
 # Create our .env file.
 cp .env.example .env
 
@@ -21,7 +18,7 @@ curl -i http://localhost:8080/ping
 # or make use of helper recipes already on backend/Makefile.
 make ping
 
-# perform a request to /flights/search without a valid JWT token. This should 
+# perform a request to /flights/search without a valid JWT token. This should
 # show an http.StatusNotFound (404) instead of a forbidden. We show a 404 and not a
 # 403 for security purposes.
 make flights-invalid
@@ -33,8 +30,8 @@ make login
 # we should be able to hit our flights endpoint.
 make flights
 
-# Test the websocket server. The current recipe sends a path parameter 
-# so that it receives an update every 3 seconds. This can be changed to 
+# Test the websocket server. The current recipe sends a path parameter
+# so that it receives an update every 3 seconds. This can be changed to
 # /subscribe/x where x is the number of seconds on which you will receive the
 # next message.
 make ws
