@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +16,7 @@ var (
 )
 
 type ThirdPartyAPI interface {
-	FetchFlights() ([]models.Flight, error)
+	FetchFlights(ctx context.Context) ([]models.Flight, error)
 }
 
 type thirdPartyAPI struct {
@@ -30,9 +31,13 @@ func NewThirdPartyAPI(httpClient *http.Client, address string) ThirdPartyAPI {
 	}
 }
 
-func (a *thirdPartyAPI) FetchFlights() ([]models.Flight, error) {
-	res, err := a.httpClient.Get(a.address)
+func (a *thirdPartyAPI) FetchFlights(ctx context.Context) ([]models.Flight, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.address, nil)
+	if err != nil {
+		return nil, fmt.Errorf("ThirdPartyAPI.FetchFlights: create request failed: %w", err)
+	}
 
+	res, err := a.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("ThirdPartyAPI.FetchFlights: http request failed: %w", err)
 	}

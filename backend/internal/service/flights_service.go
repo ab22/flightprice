@@ -44,9 +44,15 @@ func NewFlightsService(
 	}
 }
 
-func (s *flightsService) launchRequest(c client.ThirdPartyAPI, service string, wg *sync.WaitGroup, mu *sync.Mutex, res *[]models.Flight) {
+func (s *flightsService) launchRequest(
+	ctx context.Context,
+	c client.ThirdPartyAPI,
+	service string,
+	wg *sync.WaitGroup,
+	mu *sync.Mutex,
+	res *[]models.Flight) {
 	defer wg.Done()
-	flights, err := c.FetchFlights()
+	flights, err := c.FetchFlights(ctx)
 	if err != nil {
 		s.logger.Error("failed to get flights from "+service, zap.Error(err))
 	}
@@ -111,26 +117,26 @@ func (s *flightsService) searchCached(ctx context.Context) (*models.SearchFlight
 	return flights, err
 }
 
-func (s *flightsService) fetchFlightsFromClients(_ context.Context) *models.SearchFlightsOut {
+func (s *flightsService) fetchFlightsFromClients(ctx context.Context) *models.SearchFlightsOut {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var flights = make([]models.Flight, 0, 20)
 
 	wg.Add(3)
-	go s.launchRequest(s.amadeusClient, "Amadeus", &wg, &mu, &flights)
-	go s.launchRequest(s.googleflightsClient, "GoogleFlights", &wg, &mu, &flights)
-	go s.launchRequest(s.skyscannerClient, "SkyScanner", &wg, &mu, &flights)
+	go s.launchRequest(ctx, s.amadeusClient, "Amadeus", &wg, &mu, &flights)
+	go s.launchRequest(ctx, s.googleflightsClient, "GoogleFlights", &wg, &mu, &flights)
+	go s.launchRequest(ctx, s.skyscannerClient, "SkyScanner", &wg, &mu, &flights)
 	wg.Wait()
 
-	cheapestFlight := make(chan *models.Flight, 1)
-	fastestFlight := make(chan *models.Flight, 1)
+	cheapestFlightChan := make(chan *models.Flight, 1)
+	fastestFlightChan := make(chan *models.Flight, 1)
 
-	go s.findCheapestFlight(cheapestFlight, flights)
-	go s.findFastestFlight(fastestFlight, flights)
+	go s.findCheapestFlight(cheapestFlightChan, flights)
+	go s.findFastestFlight(fastestFlightChan, flights)
 
 	return &models.SearchFlightsOut{
-		Cheapest: <-cheapestFlight,
-		Fastest:  <-fastestFlight,
+		Cheapest: <-cheapestFlightChan,
+		Fastest:  <-fastestFlightChan,
 	}
 }
 
@@ -152,6 +158,6 @@ func (s *flightsService) SearchFlights(ctx context.Context) (*models.SearchFligh
 		return nil, fmt.Errorf("FlightsService.SearchFlights: json unmarshalling failed: %w", err)
 	}
 
-	s.redisClient.Set(ctx, "flights", data, 30*time.Second)
+	s.redisClient.Set(ctx, "flights", data, 10*time.Second)
 	return s.fetchFlightsFromClients(ctx), nil
 }
