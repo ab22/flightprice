@@ -14,6 +14,7 @@ import (
 	"github.com/ab22/flightprice/internal/client"
 	"github.com/ab22/flightprice/internal/config"
 	"github.com/ab22/flightprice/internal/service"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -24,6 +25,7 @@ import (
 func NewLocalLogger() (*zap.Logger, error) {
 	config := zap.NewDevelopmentConfig()
 	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	config.Level.SetLevel(zapcore.DebugLevel)
 
 	return config.Build()
 }
@@ -42,10 +44,16 @@ func main() {
 		amadeusClient       = client.NewThirdPartyAPI(httpClient, "http://amadeus:8080/search")
 		googleflightsClient = client.NewThirdPartyAPI(httpClient, "http://googleflights:8080/search")
 		skyscannerClient    = client.NewThirdPartyAPI(httpClient, "http://skyscanner:8080/search")
-		flightsService      = service.NewFlightsService(
+		redisClient         = redis.NewClient(&redis.Options{
+			Addr:     "redis:6379",
+			Password: "", // No password set
+			DB:       0,  // use default DB
+		})
+		flightsService = service.NewFlightsService(
 			amadeusClient,
 			googleflightsClient,
 			skyscannerClient,
+			redisClient,
 			logger,
 			&cfg)
 		api = api.New(logger, &cfg, flightsService)

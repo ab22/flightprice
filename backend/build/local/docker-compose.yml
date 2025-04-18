@@ -6,21 +6,20 @@ services:
     ports:
       - 8080:8080
     env_file: ../../.env
+    depends_on:
+      redis:
+        condition: service_started
   amadeus:
     build:
       context: ../../
       dockerfile: ./build/local/Dockerfile.amadeus
-    ports:
-      - 8081:8080
   googleflights:
     build:
       context: ../../
       dockerfile: ./build/local/Dockerfile.googleflights
-    ports:
-      - 8082:8080
   skyscanner:
     build:
       context: ../../
       dockerfile: ./build/local/Dockerfile.skyscanner
-    ports:
-      - 8083:8080
+  redis:
+    image: redis:7.4.2

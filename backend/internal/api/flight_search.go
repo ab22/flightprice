@@ -8,7 +8,7 @@ import (
 )
 
 func (s *server) FlightsSearch(w http.ResponseWriter, r *http.Request) {
-	flights, err := s.flightsService.SearchFlights()
+	flights, err := s.flightsService.SearchFlights(r.Context())
 
 	if err != nil {
 		s.logger.Error("failed to get flights", zap.Error(err))

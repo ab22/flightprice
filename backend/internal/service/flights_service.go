@@ -1,22 +1,28 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/ab22/flightprice/internal/client"
 	"github.com/ab22/flightprice/internal/config"
 	"github.com/ab22/flightprice/internal/service/models"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 type FlightsService interface {
-	SearchFlights() (*models.SearchFlightsOut, error)
+	SearchFlights(ctx context.Context) (*models.SearchFlightsOut, error)
 }
 
 type flightsService struct {
 	amadeusClient       client.ThirdPartyAPI
 	googleflightsClient client.ThirdPartyAPI
 	skyscannerClient    client.ThirdPartyAPI
+	redisClient         *redis.Client
 	logger              *zap.Logger
 	cfg                 *config.Config
 }
@@ -25,12 +31,14 @@ func NewFlightsService(
 	amadeusClient client.ThirdPartyAPI,
 	googleflightsClient client.ThirdPartyAPI,
 	skyscannerClient client.ThirdPartyAPI,
+	redisClient *redis.Client,
 	logger *zap.Logger,
 	cfg *config.Config) FlightsService {
 	return &flightsService{
 		amadeusClient,
 		googleflightsClient,
 		skyscannerClient,
+		redisClient,
 		logger,
 		cfg,
 	}
@@ -82,7 +90,28 @@ func (s *flightsService) findFastestFlight(c chan *models.Flight, flights []mode
 	c <- fastest
 }
 
-func (s *flightsService) SearchFlights() (*models.SearchFlightsOut, error) {
+func (s *flightsService) searchCached(ctx context.Context) (*models.SearchFlightsOut, error) {
+	data, err := s.redisClient.Get(ctx, "flights").Bytes()
+
+	if err != nil {
+		if err == redis.Nil {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("FlightsService.searchCached: redis get failed: %w", err)
+	}
+
+	var flights *models.SearchFlightsOut
+	err = json.Unmarshal(data, &flights)
+
+	if err != nil {
+		return nil, fmt.Errorf("FlightsService.searchCached: json unmarshalling failed: %w", err)
+	}
+
+	return flights, err
+}
+
+func (s *flightsService) fetchFlightsFromClients(_ context.Context) *models.SearchFlightsOut {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var flights = make([]models.Flight, 0, 20)
@@ -102,5 +131,27 @@ func (s *flightsService) SearchFlights() (*models.SearchFlightsOut, error) {
 	return &models.SearchFlightsOut{
 		Cheapest: <-cheapestFlight,
 		Fastest:  <-fastestFlight,
-	}, nil
+	}
+}
+
+func (s *flightsService) SearchFlights(ctx context.Context) (*models.SearchFlightsOut, error) {
+	cachedFlights, err := s.searchCached(ctx)
+
+	if err != nil {
+		return nil, fmt.Errorf("FlightsService.SearchFlights: %w", err)
+	} else if cachedFlights != nil {
+		s.logger.Debug("CACHE HIT")
+		return cachedFlights, nil
+	}
+
+	s.logger.Debug("CACHE MISS")
+	flights := s.fetchFlightsFromClients(ctx)
+	data, err := json.Marshal(flights)
+
+	if err != nil {
+		return nil, fmt.Errorf("FlightsService.SearchFlights: json unmarshalling failed: %w", err)
+	}
+
+	s.redisClient.Set(ctx, "flights", data, 30*time.Second)
+	return s.fetchFlightsFromClients(ctx), nil
 }
