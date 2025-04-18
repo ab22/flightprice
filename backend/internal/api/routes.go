@@ -4,9 +4,7 @@ import (
 	"net/http"
 
 	"github.com/ab22/flightprice/internal/api/middleware"
-	"github.com/ab22/flightprice/internal/config"
 	"github.com/gorilla/mux"
-	"go.uber.org/zap"
 )
 
 type Route struct {
@@ -15,11 +13,11 @@ type Route struct {
 	Middlewares []mux.MiddlewareFunc
 }
 
-func RegisterRoutes(s *server, logger *zap.Logger, cfg *config.Config) *mux.Router {
+func (s *server) RegisterRoutes() *mux.Router {
 	var (
 		router           = mux.NewRouter()
-		authMiddleware   = middleware.NewAuthMiddleware(logger, cfg.JWTSecretKey)
-		loggerMiddleware = middleware.NewRequestLoggerMiddleware(logger)
+		authMiddleware   = middleware.NewAuthMiddleware(s.logger, s.cfg.JWTSecretKey)
+		loggerMiddleware = middleware.NewRequestLoggerMiddleware(s.logger)
 	)
 
 	// Global middlewares
@@ -29,6 +27,9 @@ func RegisterRoutes(s *server, logger *zap.Logger, cfg *config.Config) *mux.Rout
 	router.HandleFunc("/ping", s.Ping)
 	// Test Login
 	router.HandleFunc("/login", s.TestLogin)
+
+	// Websocket endpoints.
+	router.HandleFunc("/subscribe/{freq}", s.Subscribe)
 
 	// Flight endpoints
 	flightsAPI := router.PathPrefix("/flights").Subrouter()

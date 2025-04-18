@@ -32,4 +32,10 @@ make login
 # Copy the JWT token into our `.env` file inside of the API_TOKEN variable. Now
 # we should be able to hit our flights endpoint.
 make flights
+
+# Test the websocket server. The current recipe sends a path parameter 
+# so that it receives an update every 3 seconds. This can be changed to 
+# /subscribe/x where x is the number of seconds on which you will receive the
+# next message.
+make ws
 ``
